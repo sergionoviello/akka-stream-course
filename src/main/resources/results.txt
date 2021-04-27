@@ -1,0 +1,36 @@
+
+100cars
+0ms = 3583ms
+16ms = 15513ms
+
+async after paint
+13492ms
+
+async after engine
+12150ms  (best result)
+
+async after wheels
+14210ms
+(slower because the buffer overhead)
+
+
+.via(paintShop.paint)
+.via(engineShop.installEngines) //4ms section
+.via(wheelShop.installWheels)
+.via(upgradeShop.installUpgrade)  //12ms section
+.via(qa.inspect)
+.take(quantity)
+.runWith(Sink.collection)
+
+
+improvement  (12134ms)
+.via(paintShop.paint)
+.via(engineShop.installEngines) //4ms section
+.async
+.via(wheelShop.installWheels)    //10ms section
+.async
+.via(upgradeShop.installUpgrade)  //2ms section
+.via(qa.inspect)
+.take(quantity)
+.runWith(Sink.collection)
+
