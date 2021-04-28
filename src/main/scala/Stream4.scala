@@ -2,12 +2,11 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.stream.{ActorMaterializer, Attributes, OverflowStrategy}
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
-object Stream3 extends App {
+object Stream4 extends App  {
   implicit val system = ActorSystem("stream1")
   implicit val materializer = ActorMaterializer()
   implicit val loggingAdapter = system.log
@@ -16,7 +15,31 @@ object Stream3 extends App {
 
 
   def addB: Flow[(Int, Int), String, NotUsed] = {
-    Flow[(Int, Int)].map(i1 => i1._1.toString + "b")
+    Flow[(Int, Int)].map {
+      i1 =>
+        i1._1.toString + "b"
+    }
+  }
+
+  def addC: Flow[String, String, NotUsed] = {
+    Flow[String].map {
+      i1 =>
+        i1 + "c"
+    }
+  }
+
+  def addD: Flow[String, String, NotUsed] = {
+    Flow[String].map {
+      i1 =>
+        i1 + "d"
+    }
+  }
+
+  def addE: Flow[String, String, NotUsed] = {
+    Flow[String].map {
+      i1 =>
+        i1 + "e"
+    }
   }
 
   val q = Source
@@ -50,16 +73,38 @@ object Stream3 extends App {
       )
     )
     //.async
-    //.via(addB)
     .mapAsync(1) { e =>
-      if (e._1 == 1) {
-        Source.single(e).delay(10.seconds).runWith(Sink.last)
-      } else {
-        Source.single(e).runWith(Sink.last)
-      }
+      Source.single(e)
+        .via(addB)
+        .log(">>> Item", e => e)
 
+        .withAttributes(
+          Attributes.logLevels(
+            onElement = Logging.DebugLevel,
+            onFinish = Logging.DebugLevel,
+            onFailure = Logging.ErrorLevel
+          )
+        )
+        .via(addC)
+        .mapAsync(1) { e =>
+          Source.single(e)
+            .via(addD)
+            .log(">>>> Item", e => e)
+
+            .withAttributes(
+              Attributes.logLevels(
+                onElement = Logging.DebugLevel,
+                onFinish = Logging.DebugLevel,
+                onFailure = Logging.ErrorLevel
+              )
+            )
+            .via(addE)
+            .runWith(Sink.lastOption)
+
+        }
+        .runWith(Sink.lastOption)
     }
-    .log(">>> Item", e => e)
+    .log(">>>>> Item", e => e)
 
     .withAttributes(
       Attributes.logLevels(
